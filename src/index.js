@@ -22,19 +22,30 @@ class Square extends React.Component {
 class Board extends React.Component {
 
   renderSquare(i) {
-    return <Square value={this.props.squares[i]} onClick={() => this.props.onClick(i)} />;
+    return <Square key={'index_'+i} value={this.props.squares[i]} onClick={() => this.props.onClick(i)} />;
+  }
+
+  renderIndex(i) {
+    return <Square key={i} value={i} onClick={() => null}/>
   }
 
   render() {
     let row_num = this.props.rows;
     let col_num = this.props.columns;
     let rows = []
+    //index
+    let headers = [this.renderIndex('')];
+    for (let j=0; j<col_num; j++) {
+     headers.push(this.renderIndex(j+1));
+    }
+    rows.push(headers);
+
     for (let i=0; i<row_num; i++) {
-      let row = []
+      let row = [this.renderIndex(i+1)];
       for (let j=0; j<col_num; j++) {
         row.push(this.renderSquare(i*col_num+j));
       }
-      rows.push(<div className="board-row">{row.slice()}</div>);
+      rows.push(<div key={i} className="board-row">{row.slice()}</div>);
     }
     return (
       <div>
@@ -50,9 +61,12 @@ class Game extends React.Component {
     this.state = {
       history: [{
         squares: Array(9).fill(null),
+        lastMove: null,
       }],
       xIsNext: true,
       stepNumber: 0,
+      rows: 8,
+      columns: 22,
     };
   }
 
@@ -69,6 +83,7 @@ class Game extends React.Component {
     this.setState({
       history: history.concat([{
         squares: squares,
+        lastMove: i,
       }]),
       stepNumber: history.length,
       xIsNext: !this.state.xIsNext,
@@ -89,7 +104,7 @@ class Game extends React.Component {
 
     const moves = history.map((step, move) => {
       const desc = move ?
-        'Go to move #' + move :
+        'Go to move #'+ move+' ('+ Math.floor(step.lastMove/this.state.columns+1)+', '+(step.lastMove % this.state.columns+1) + ')':
         'Go to game start';
       return (
         <li key={move}>
@@ -110,8 +125,8 @@ class Game extends React.Component {
           <Board
             squares={current.squares}
             onClick={(i) => this.handleClick(i)}
-            rows = {5}
-            columns = {10}
+            rows = {this.state.rows}
+            columns = {this.state.columns}
           />
         </div>
         <div className="game-info">
@@ -130,7 +145,7 @@ ReactDOM.render(
   document.getElementById('root')
 );
 
-function calculateWinner(squares) {
+function calculateWinner(squares, win_num = 4) {
   const lines = [
     [0, 1, 2],
     [3, 4, 5],
