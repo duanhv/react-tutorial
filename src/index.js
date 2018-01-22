@@ -47,7 +47,7 @@ class Board extends React.Component {
       let row = [this.renderIndex(i+1)];
       for (let j=0; j<colNum; j++) {
         let index = i*colNum+j;
-        row.push(this.renderSquare(index, index === lastMove, index in wonLine));
+        row.push(this.renderSquare(index, index === lastMove, wonLine.indexOf(index) > -1 ));
       }
       rows.push(<div key={i} className="board-row">{row.slice()}</div>);
     }
@@ -70,7 +70,7 @@ class Game extends React.Component {
       xIsNext: true,
       stepNumber: 0,
       rows: 8,
-      columns: 22,
+      columns: 15,
     };
   }
 
@@ -79,7 +79,7 @@ class Game extends React.Component {
     const current = history[history.length - 1];
     const squares = current.squares.slice();
 
-    if (calculateWinner(squares, this.state.columns, current.lastMove) || squares[i]) {
+    if (calculateWinner(squares, this.state.rows, this.state.columns, current.lastMove) || squares[i]) {
       return;
     }
 
@@ -92,7 +92,6 @@ class Game extends React.Component {
       stepNumber: history.length,
       xIsNext: !this.state.xIsNext,
     });
-    console.log(i);
   }
 
   jumpTo(step) {
@@ -105,8 +104,8 @@ class Game extends React.Component {
   render() {
     const history = this.state.history;
     const current = history[this.state.stepNumber];
-    const wonLine = calculateWinner(current.squares, this.state.columns, current.lastMove);
-
+    const wonLine = calculateWinner(current.squares, this.state.rows, this.state.columns, current.lastMove);
+    console.log("wonLine " + wonLine)
     const moves = history.map((step, move) => {
       const desc = move ?
         'Go to move #'+ move+' ('+ Math.floor(step.lastMove/this.state.columns+1)+', '+(step.lastMove % this.state.columns+1) + ')':
@@ -152,22 +151,46 @@ ReactDOM.render(
   document.getElementById('root')
 );
 
-function calculateWinner(squares, colNum, lastMove, win_num = 4) {
-  const lines = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6],
-  ];
-  for (let i = 0; i < lines.length; i++) {
-    const [a, b, c] = lines[i];
-    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-      return lines[i];
+function calculateWinner(squares, rowNum, colNum, lastMove, win_num = 5) {
+    let matrix = [];
+    if (lastMove == null) {
+      return null;
     }
-  }
-  return null;
+    // 1. convert squares array to matrix
+    for (let i=0; i< rowNum+2; i++) {
+      matrix.push(new Array(colNum+2).fill(null));
+    }
+    for (let i=0; i<squares.length; i++) {
+      matrix[Math.floor(i/colNum)+1][i%colNum+1] = squares[i];
+    }
+
+    let [r, c]   = [Math.floor(lastMove/colNum)+1, (lastMove%colNum+1)];
+
+    // 2. moving vetors
+    let vectors = [
+                   [[1,0], [-1, 0]],
+                   [[0,1], [0, -1]],
+                   [[1,1], [-1, -1]],
+                   [[1,-1], [-1, 1]]
+                  ];
+    let result = [];
+
+    // 3. detect winner
+    for (let vector of vectors) {
+      result.push((r-1)*colNum + c -1);
+      for (let i=0; i<vector.length; i++) {
+       let [r1, c1] = [r + vector[i][0], c + vector[i][1]];
+         while (matrix[r1][c1] != null && matrix[r1][c1] === matrix[r][c]) {
+            result.push((r1-1)*colNum + c1 - 1);
+            [r1, c1] = [r1 + vector[i][0], c1 + vector[i][1]];
+         }
+      }
+      if (result.length >= win_num) {
+        break;
+      } else {
+        result = [];
+      }
+    }
+    return (result.length > 0) ? result : null;
 }
+
